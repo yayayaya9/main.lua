@@ -1,0 +1,126 @@
+-- itzalyssa1 hub (June 2025)
+-- Natural Disaster Survival: full support
+
+--// Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+-- Add new tab for Natural Disaster Survival
+local disasterTab = Window:CreateTab("Natural Disaster Survival", 4483362458)
+
+-- Add to game selection
+if gameTab then
+    gameTab:CreateButton({
+        Name = "Natural Disaster Survival",
+        Callback = function()
+            selectedGame = "Disaster"
+            updateTabVisibility()
+        end
+    })
+end
+
+-- Basic Features
+local safePlatform = nil
+
+local function createFloatingPlatform()
+    if not safePlatform then
+        safePlatform = Instance.new("Part")
+        safePlatform.Size = Vector3.new(20, 1, 20)
+        safePlatform.Anchored = true
+        safePlatform.Position = Vector3.new(0, 200, 0)
+        safePlatform.Name = "SafePlatform"
+        safePlatform.BrickColor = BrickColor.new("Bright blue")
+        safePlatform.Transparency = 0.4
+        safePlatform.Parent = Workspace
+    end
+end
+
+local function teleportToSafe()
+    if safePlatform then
+        player.Character:PivotTo(safePlatform.CFrame + Vector3.new(0, 3, 0))
+    end
+end
+
+-- ESP for survivors
+local function survivorESP()
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local tag = Instance.new("BillboardGui")
+            tag.Name = "SurvivorESP"
+            tag.AlwaysOnTop = true
+            tag.Size = UDim2.new(0,100,0,30)
+            tag.Adornee = plr.Character.HumanoidRootPart
+
+            local txt = Instance.new("TextLabel")
+            txt.Parent = tag
+            txt.Size = UDim2.new(1,0,1,0)
+            txt.Text = plr.Name
+            txt.BackgroundTransparency = 1
+            txt.TextScaled = true
+            txt.TextColor3 = Color3.fromRGB(0,255,0)
+            txt.Font = Enum.Font.GothamBold
+
+            tag.Parent = plr.Character.HumanoidRootPart
+        end
+    end
+end
+
+-- Disaster detection (basic)
+local function detectDisaster()
+    for _,v in pairs(Workspace:GetChildren()) do
+        if (v:IsA("Model") or v:IsA("Part")) and not v:IsDescendantOf(player.Character) then
+            local n=v.Name:lower()
+            if n:find("disaster") or n:find("storm") or n:find("fire") or n:find("volcano") or n:find("flood") then
+                Rayfield:Notify({Title="Disaster Detected",Content=v.Name,Duration=3})
+            end
+        end
+    end
+end
+
+-- Auto‑teleport to tallest safe object
+local function tpToTallest()
+    local highestY=-math.huge
+    local targetPart=nil
+    for _,p in ipairs(Workspace:GetDescendants()) do
+        if p:IsA("BasePart") and p.Size.Y>3 and p.Position.Y>highestY and (p.Name:lower():find("tower") or p.Position.Y>100) then
+            highestY=p.Position.Y
+            targetPart=p
+        end
+    end
+    if targetPart then
+        player.Character:PivotTo(targetPart.CFrame+Vector3.new(0,5,0))
+    end
+end
+
+-- Water level monitor
+local waterMonitor=false
+local function monitorWater()
+    while waterMonitor and selectedGame=="Disaster" do
+        local waterLevel=nil
+        for _,w in ipairs(Workspace:GetDescendants()) do
+            if w:IsA("Part") and w.Name:lower():find("water") then
+                waterLevel=w.Position.Y+w.Size.Y/2
+                break
+            end
+        end
+        if waterLevel and Humanoid.RootPart.Position.Y<waterLevel+5 then
+            tpToTallest()
+        end
+        task.wait(1)
+    end
+end
+
+disasterTab:CreateButton({Name="Survivor ESP",Callback=survivorESP})
+
+disasterTab:CreateButton({Name="Detect Disaster",Callback=detectDisaster})
+
+disasterTab:CreateButton({Name="Teleport to Tallest",Callback=tpToTallest})
+
+disasterTab:CreateToggle({Name="Auto Water Safety",CurrentValue=false,Callback=function(s)
+        waterMonitor=s
+        if s then task.spawn(monitorWater) end
+end})
